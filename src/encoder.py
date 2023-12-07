@@ -3,9 +3,11 @@ from pickle import TRUE
 import cv2 as cv
 import numpy as np
 import pandas as pd
-import quantization as qtables
+
+import metrics
 import functions as func
 import constants as const
+import quantization as qtables
 
 
 class JPEGEncoder:
@@ -26,11 +28,11 @@ class JPEGEncoder:
         func.log(f"Read input RGB image, its shape= {imageRGB.shape}")
 
         # * Step 1: Transform the image color-space from RGB to YUV
-        imageYUV = cv.cvtColor(imageRGB, cv.COLOR_BGR2YCrCb)
+        imageYCbr = cv.cvtColor(imageRGB, cv.COLOR_RGB2YCrCb)
         func.log(f"Converted input to YUV image, its shape= {imageRGB.shape}")
 
-        # * Extra step: Get W, H and split the imageYUV for its channels
-        Y, Cb, Cr = func.splitToChannels(imageYUV)
+        # * Extra step: Get W, H and split the imageYCbr for its channels
+        Y, Cb, Cr = func.splitToChannels(imageYCbr)
         originalSize = Y.size + Cb.size | Cr.size
         func.log(f"Splitted YUV channels, shape={Y.shape}, size={Y.size}")
 
@@ -39,7 +41,9 @@ class JPEGEncoder:
         func.log(f"Finished Chroma Downsampling. Cb={dsCb.shape} | Cr={dsCr.shape}")
 
         # * Before Step 3: Select quantization tables for both luminance and chroma channels and apply quality factor on them
-        QTL = func.changeQuality(qtables.QT_LUMINANCE, qualityFactor)  # Luminance table.
+        QTL = func.changeQuality(
+            qtables.QT_LUMINANCE, qualityFactor
+        )  # Luminance table.
         QTC = func.changeQuality(qtables.QT_CHROMINANCE, qualityFactor)  # Chroma table.
 
         # * Step 3: Apply DCT on (8x8) shape of pixel blocks on all three channels
@@ -71,10 +75,13 @@ class JPEGEncoder:
 
         newSize = rleY.size + rleCb.size + rleCr.size
 
+        metricCS = metrics.CRMetric().calculate(originalSize, newSize)
+        metricMSE = metrics.MSEMetric().calculate(Y, qY)
+
         # ? Preview results from all steps above
         func.log("Starting preview...")
         func.preview("RGB", imageRGB)
-        func.preview("YUV", imageYUV)
+        func.preview("YUV", imageYCbr)
 
         func.preview("Luminance Y", Y)
         func.preview("Blue Chroma Cb", Cb)
@@ -91,10 +98,10 @@ class JPEGEncoder:
         func.preview("dctCb", dctCb)
         func.preview("dctCr", dctCr)
 
-        func.preview("result", qY)
-        func.preview("result", imageRGB)
         func.preview("Quantized Blue Chroma qCb", qCb)
         func.preview("Quantized Red Chroma qCr", qCr)
+        func.preview("Final Luminance", qY)
+        func.preview("Result", imageRGB)
 
         func.log("Preview finished.")
         func.log(
@@ -102,15 +109,21 @@ class JPEGEncoder:
                 originalSize / 1024, newSize / 1024
             )
         )
+        func.log("====== Start metrics")
+        func.log(f"Metric: Compression Ratio =  {metricCS:.2f}")
+        func.log(f"Metric: Mean Square Error = {metricMSE:.2f}")
+        func.log("====== Finish metrics")
+        func.log()
         func.log("JPEGEncoder encoded image successfully.")
         return qY.shape, rleY, rleCb, rleCr
 
+
 if __name__ == "__main__":
     try:
-        inputPath = input("Enter image path to decode: ").strip()
+        inputPath = input("Enter image path to encode: ").strip()
         quality = int(input("Choose quality [0:100]: "))
         encoder = JPEGEncoder()
-        encoder.encode(quality, inputPath) # shape, rleY, rleCb, rleCr
+        encoder.encode(quality, inputPath)  # shape, rleY, rleCb, rleCr
     except FileNotFoundError:
         func.log("Can't find image at given path.")
     except PermissionError:

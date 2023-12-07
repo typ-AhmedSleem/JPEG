@@ -8,6 +8,6 @@ RESIZE = False
 
 # IO
 BASE_PATH = "C:\\Users\\typ\\Development\\algorithms\\JPEG\\src\\images"
-FILENAME = "result"
-INPUT_PATH: Final = f"{BASE_PATH}\\output\\{FILENAME}.jpeg"
+FILENAME = "original (8)"
+INPUT_PATH: Final = f"{BASE_PATH}\\input\\{FILENAME}.jpeg"
 OUTPUT_PATH: Final = f"{BASE_PATH}\\output\\{FILENAME}.{FILE_EXT}"
